@@ -1,7 +1,9 @@
-const Thing = require("../models/Things");
+const Thing = require("../models/Thing");
+
+const jwt = require("jsonwebtoken");
 
 exports.createThing = (req, res, next) => {
-  delete req.body._id; // Supprime le faux id que génère le front-end et le remplace par l'id de mongoDB
+  delete req.body._id; // Supprime le faux id que génère le front-end pour le remplacer par l'id de mongoDB
   const thing = new Thing({
     ...req.body, // spread
   });
@@ -19,10 +21,26 @@ exports.modifyThing = (req, res, next) => {
     .catch((error) => res.status(400).json({ error }));
 };
 
+/**
+ *
+ * @param {Request} req
+ * @param {Response} res
+ * @param {*} next
+ */
 exports.deleteThing = (req, res, next) => {
-  Thing.deleteOne({ _id: req.params.id })
-    .then(() => res.status(200).json({ message: "Objet supprimé !" }))
-    .catch((error) => res.status(400).json({ error }));
+  Thing.findOne({ _id: req.params.id }).then((thing) => {
+    if (!thing) {
+      return res.status(404).json({ error: new Error("Objet non trouvé !") });
+    }
+    if (thing.userId !== req.auth.userId) {
+      return res.status(401).json({
+        error: new Error("Requête non autorisée !"),
+      });
+    }
+    Thing.deleteOne({ _id: req.params.id })
+      .then(() => res.status(200).json({ message: "Objet supprimé !" }))
+      .catch((error) => res.status(400).json({ error }));
+  });
 };
 
 exports.getOneThing = (req, res, next) => {
