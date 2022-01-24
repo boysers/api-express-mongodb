@@ -1,11 +1,18 @@
 const Thing = require("../models/Thing");
+const fs = require("fs");
 
-const jwt = require("jsonwebtoken");
-
+/**
+ * @param {Request} req
+ * @param {Response} res
+ */
 exports.createThing = (req, res, next) => {
-  delete req.body._id; // Supprime le faux id que génère le front-end pour le remplacer par l'id de mongoDB
+  const thingObject = JSON.parse(req.body.thing);
+  delete thingObject._id; // Supprime le faux id que génère le front-end pour le remplacer par l'id de mongoDB
   const thing = new Thing({
-    ...req.body, // spread
+    ...thingObject, // spread
+    imageUrl: `${req.protocol}://${req.get("host")}/images/${
+      req.file.filename
+    }`,
   });
   thing
     .save()
@@ -15,17 +22,30 @@ exports.createThing = (req, res, next) => {
     .catch((error) => res.status(400).json({ error }));
 };
 
+/**
+ * @param {Request} req
+ * @param {Response} res
+ */
 exports.modifyThing = (req, res, next) => {
-  Thing.updateOne({ _id: req.params.id }, { ...req.body, _id: req.params.id })
+  const thingObject = req.file
+    ? {
+        ...JSON.parse(req.body.thing),
+        imageUrl: `${req.protocol}://${req.get("host")}/images/${
+          req.file.filename
+        }`,
+      }
+    : { ...req.body };
+  Thing.updateOne(
+    { _id: req.params.id },
+    { ...thingObject, _id: req.params.id }
+  )
     .then(() => res.status(200).json({ message: "Objet modifié !" }))
     .catch((error) => res.status(400).json({ error }));
 };
 
 /**
- *
  * @param {Request} req
  * @param {Response} res
- * @param {*} next
  */
 exports.deleteThing = (req, res, next) => {
   Thing.findOne({ _id: req.params.id }).then((thing) => {
@@ -37,9 +57,16 @@ exports.deleteThing = (req, res, next) => {
         error: new Error("Requête non autorisée !"),
       });
     }
-    Thing.deleteOne({ _id: req.params.id })
-      .then(() => res.status(200).json({ message: "Objet supprimé !" }))
-      .catch((error) => res.status(400).json({ error }));
+    Thing.findOne({ _id: req.params.id })
+      .then((thing) => {
+        const filename = thing.imageUrl.split("/images/")[1];
+        fs.unlink(`images/${filename}`, () => {
+          Thing.deleteOne({ _id: req.params.id })
+            .then(() => res.status(200).json({ message: "Objet supprimé !" }))
+            .catch((error) => res.status(400).json({ error }));
+        });
+      })
+      .catch((error) => res.status(500).json({ error }));
   });
 };
 
