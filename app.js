@@ -7,7 +7,7 @@ const userRoutes = require("./routes/user");
 
 mongoose
   .connect(
-    "mongodb+srv://boysers:WfDK8coGCdf02YTQ@boysers.bbry5.mongodb.net/myFirstDatabase?retryWrites=true&w=majority",
+    `${process.env.MONGODB}/myFirstDatabase?retryWrites=true&w=majority`,
     {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -17,7 +17,7 @@ mongoose
     console.log("Connexion à MongoDB réussie !");
   })
   .catch(() => {
-    console.log("Connexion = MongoDB échouée !");
+    console.log("Connexion à MongoDB échouée !");
   });
 
 const app = express();
